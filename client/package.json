@@ -1,6 +1,0 @@
-{
-  "scripts": {
-    "build": "ng build --configuration=production"
-  },
-  "engines": { "node": "22.x" }
-}
