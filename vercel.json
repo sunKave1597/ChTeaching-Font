@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd App && npm ci && npm run build",
+  "buildCommand": "cd App && npm install && npm run build",
   "outputDirectory": "App/dist/App/browser",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
