@@ -1,8 +1,6 @@
 {
-  "name": "root-build",
-  "private": true,
-  "engines": { "node": "22.x" },
   "scripts": {
-    "build": "cd client/ChTeaching && npm ci && npm run build"
-  }
+    "build": "ng build --configuration=production"
+  },
+  "engines": { "node": "22.x" }
 }

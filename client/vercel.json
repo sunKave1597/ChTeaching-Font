@@ -1,9 +1,7 @@
 {
-  "framework": "none",
+  "framework": "angular",
   "buildCommand": "npm run build",
-  "outputDirectory": "client/ChTeaching/dist/ChTeaching/browser",
-  "cleanUrls": true,
-  "trailingSlash": false,
+  "outputDirectory": "dist/ChTeaching/browser",
   "routes": [
     { "handle": "filesystem" },
     { "src": "/.*", "dest": "/index.html" }
