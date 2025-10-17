@@ -10,7 +10,7 @@ import { Router } from '@angular/router';
     <div class="min-h-screen flex flex-col relative overflow-visible">
       <div class="absolute top-[40%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
         <div class="w-[200px] h-[200px] bg-white rounded-full relative border-2 border-gray-300">
-          <img src="/img/logo.png" class="absolute inset-0 m-auto max-w-[80%] max-h-[80%] object-contain" alt="Logo">
+          <img src="logo.png" class="absolute inset-0 m-auto max-w-[80%] max-h-[80%] object-contain" alt="Logo">
         </div>
       </div>
       <div class="h-[40vh] bg-[#9D1616] relative">
