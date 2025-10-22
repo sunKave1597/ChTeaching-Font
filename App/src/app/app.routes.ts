@@ -6,16 +6,18 @@ import { RegisterLayoutComponent } from './register-layout.component/register-la
 import { MainComponent } from './main-component/main-component';
 import { PuzzleContainer } from './puzzle/puzzle';
 import { BookContainer } from './book/book';
+import { GuessWordGameComponent } from './guess-word-game/guess-word-game';
 
 export const routes: Routes = [
   { path: '', component: LandingPageComponent, title: 'หน้าแรก' },
   { path: 'login', component: LoginLayoutComponent, title: 'เข้าสู่ระบบ' },
-  { 
-    path: '', 
+  {
+    path: '',
     component: MainContainerComponent,
     children: [
       { path: 'home', component: MainComponent, title: 'หน้าหลัก' },
       { path: 'puzzle', component: PuzzleContainer, title: 'เกม' },
+      { path: 'puzzle/guess-word', component: GuessWordGameComponent, title: 'ทายคำศัพท์' },
       { path: 'book', component: BookContainer, title: 'แบบทดสอบก่อนเรียน' }
     ]
   },

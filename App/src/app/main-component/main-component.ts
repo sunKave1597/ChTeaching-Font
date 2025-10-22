@@ -30,7 +30,7 @@ interface GameMode {
   ],
   template: `
     <!-- ส่วนหลักของเนื้อหา จัดให้อยู่ตรงกลางและเต็มพื้นที่ -->
-    <main class="flex-grow p-4 sm:p-8 max-w-7xl mx-auto w-full min-h-[calc(100vh-8rem)] bg-gray-50">
+    <main class="flex-grow p-4 sm:p-8  mx-auto w-full min-h-[calc(100vh-8rem)] bg-gray-50">
       <div class="h-full flex flex-col items-center justify-center">
         <!-- คอนเทนเนอร์สำหรับปุ่มโหมด จำกัดความกว้าง -->
         <div class="flex flex-col gap-4 w-full max-w-lg mx-auto">

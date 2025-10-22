@@ -1,19 +1,37 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { environment } from './env';
+import { BehaviorSubject, Observable } from 'rxjs';
 
-@Injectable({ providedIn: 'root' })
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  token: string;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
 export class AuthService {
-  private isLoggedInSubject = new BehaviorSubject<boolean>(false);
-  isLoggedIn = this.isLoggedInSubject.asObservable();
-  email = '';
+  private userSubject = new BehaviorSubject<User | null>(null);
+  user$ = this.userSubject.asObservable();
 
-  login(email: string) {
-    this.isLoggedInSubject.next(true);
-    this.email = email;
+  constructor(private http: HttpClient) {}
+
+  login(email: string, password: string): Observable<User> {
+    return this.http.post<User>(`${environment.apiUrl}/auth/login`, { email, password });
+  }
+
+  setUser(user: User) {
+    this.userSubject.next(user);
+  }
+
+  getUser(): User | null {
+    return this.userSubject.value;
   }
 
   logout() {
-    this.isLoggedInSubject.next(false);
-    this.email = '';
+    this.userSubject.next(null);
   }
 }

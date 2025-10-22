@@ -8,7 +8,7 @@ import { Router } from '@angular/router';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="bg-white p-4 shadow-md sticky top-0 z-10">
-      <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <div class=" mx-auto flex justify-between items-center">
         
       </div>
     </header>

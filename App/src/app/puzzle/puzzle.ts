@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 
 interface GameMode {
   name: string;
@@ -8,7 +9,7 @@ interface GameMode {
 }
 
 @Component({
-  selector: 'app-main',
+  selector: 'app-puzzle',
   standalone: true,
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -25,9 +26,7 @@ interface GameMode {
   template: `
     <main class="flex-grow p-4 sm:p-8 max-w-7xl mx-auto w-full min-h-[calc(100vh-8rem)]">
       <div class="h-full flex flex-col items-center justify-center">
-        
         <div class="flex flex-col gap-4 w-full max-w-xl mx-auto">
-          
           @for (mode of modes(); track mode.name) {
             <button 
               (click)="selectMode(mode)"
@@ -36,7 +35,6 @@ interface GameMode {
                      w-full min-h-[80px] p-4 sm:p-6 rounded-xl border border-gray-100 shadow-md 
                      transition-all duration-300 hover:bg-[#F0F0F0] hover:shadow-lg 
                      focus:outline-none focus:ring-4 focus:ring-[#9D1616] focus:ring-opacity-50">
-              
               <ng-container [ngSwitch]="mode.icon">
                 @switch (mode.icon) {
                   @case ('lightbulb') {
@@ -56,14 +54,12 @@ interface GameMode {
                   }
                 }
               </ng-container>
-              
               <span class="text-xl font-bold main-color">
                 {{ mode.name }}
               </span>
             </button>
           }
         </div>
-
         @if (selectedMode()) {
           <div class="mt-8 text-center text-xl text-gray-700 p-4 border-t border-gray-200">
             คุณเลือกโหมด: <span class="font-bold main-color">{{ selectedMode()?.name }}</span>
@@ -82,8 +78,14 @@ export class PuzzleContainer {
 
   selectedMode = signal<GameMode | null>(null);
 
+  constructor(private router: Router) {}
+
   selectMode(mode: GameMode): void {
     this.selectedMode.set(mode);
-    console.log(`เลือกโหมด: ${mode.name}`);
+    if (mode.name === 'ทายคำศัพท์') {
+      this.router.navigateByUrl('/puzzle/guess-word');
+    } else {
+      console.log(`เลือกโหมด: ${mode.name}`);
+    }
   }
 }

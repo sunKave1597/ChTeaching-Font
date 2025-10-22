@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../env';
+import { AuthService } from '../../auth.service';
 
 @Component({
   selector: 'app-login-form',
@@ -38,7 +39,7 @@ export class LoginFormComponent {
   email: string = '';
   password: string = '';
 
-  constructor(private router: Router, private http: HttpClient) {}
+  constructor(private router: Router, private http: HttpClient, private authService: AuthService) {}
 
   onLoginClick() {
     const loginData = {
@@ -47,8 +48,9 @@ export class LoginFormComponent {
     };
 
     this.http.post(`${environment.apiUrl}/auth/login`, loginData).subscribe({
-      next: (response) => {
+      next: (response: any) => {
         console.log('Login successful:', response);
+        this.authService.setUser(response); // Store user data
         this.router.navigateByUrl('/home').then(success => {
           console.log('Navigation success:', success);
         });

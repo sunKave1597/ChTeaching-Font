@@ -25,7 +25,7 @@ interface Topic {
   `
   ],
   template: `
-    <main class="flex-grow p-4 sm:p-8 max-w-7xl mx-auto w-full min-h-[calc(100vh-8rem)]">
+    <main class="flex-grow p-4 sm:p-8 mx-auto w-full min-h-[calc(100vh-8rem)]">
       <div class="h-full flex flex-col items-center justify-center">
         
         <!-- คอนเทนเนอร์สำหรับรายการหัวข้อ 7 ปุ่ม -->
