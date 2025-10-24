@@ -2,11 +2,20 @@ import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRe
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { interval, Subscription } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../env';
 
 interface Question {
+  text: string;
+  options: string[];
+  answerIndex: number;
   image: string;
-  choices: string[];
-  correctAnswer: string;
+}
+
+interface Answer {
+  question: Question;
+  selectedAnswer: string;
+  isCorrect: boolean;
 }
 
 @Component({
@@ -16,18 +25,15 @@ interface Question {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="relative flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <!-- Back Button -->
       <button
         (click)="returnToPuzzle()"
-        class="fixed top-4 left-4 p-2 text-[#9D1616] hover:text-[#7B1111] transition duration-200 z-50"
+        class="absolute top-4 left-4 p-2 rounded-full bg-[#9D1616] text-white hover:bg-[#7B1111] transition duration-200 z-30"
         title="กลับสู่หน้าเกม"
       >
-        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
       </button>
-
-      <!-- Start Popup -->
       @if (showStartPopup) {
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
           <div class="bg-white rounded-lg p-6 w-11/12 max-w-md sm:max-w-lg">
@@ -44,8 +50,6 @@ interface Question {
           </div>
         </div>
       }
-
-      <!-- Countdown Timer -->
       @if (showCountdown) {
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
           <div class="bg-white rounded-lg p-6 w-11/12 max-w-md sm:max-w-lg">
@@ -60,37 +64,19 @@ interface Question {
           </div>
         </div>
       }
-
-      <!-- Quiz Interface -->
       @if (!showStartPopup && !showCountdown && !showSuccessPopup) {
         <div class="flex flex-col items-center w-full max-w-md sm:max-w-lg">
-          <!-- Question Number -->
           <div class="text-center text-xl text-[#9D1616] mb-4">
-            คำถามที่ {{ currentQuestionIndex + 1 }} / 10
+            คำถามที่ {{ currentQuestionIndex + 1 }} / {{ questions.length }}
           </div>
-
-          <!-- Centered Image -->
-          <div class="mb-8">
+          <div class="mb-4">
             <img
               [src]="currentQuestion.image"
               alt="Guess the Word Image"
               class="w-64 h-64 object-cover rounded-lg shadow-md sm:w-80 sm:h-80"
             />
           </div>
-
-          <!-- Answer Choices -->
-          <div class="grid grid-cols-2 gap-4 w-full mb-8">
-            <button
-              *ngFor="let choice of currentQuestion.choices; let i = index"
-              (click)="selectAnswer(i)"
-              class="py-3 px-4 bg-[#9D1616] text-white rounded-lg shadow-md hover:bg-[#7B1111] transition duration-200 text-base font-medium"
-            >
-              {{ choice }}
-            </button>
-          </div>
-
-          <!-- Progress Timer -->
-          <div class="w-full">
+          <div class="w-full mb-8">
             <div class="text-center text-[#9D1616] mb-2">เวลาเหลือ: {{ timeLeft }} วินาที</div>
             <div class="relative w-full h-8 bg-gray-200 rounded-full overflow-hidden">
               <div
@@ -99,10 +85,17 @@ interface Question {
               ></div>
             </div>
           </div>
+          <div class="grid grid-cols-2 gap-4 w-full mb-8">
+            <button
+              *ngFor="let choice of currentQuestion.options; let i = index"
+              (click)="selectAnswer(i)"
+              class="py-3 px-4 bg-[#9D1616] text-white rounded-lg shadow-md hover:bg-[#7B1111] transition duration-200 text-base font-medium"
+            >
+              {{ choice }}
+            </button>
+          </div>
         </div>
       }
-
-      <!-- Game Over Popup -->
       @if (showGameOverPopup) {
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
           <div class="bg-white rounded-lg p-6 w-11/12 max-w-md sm:max-w-lg">
@@ -125,13 +118,24 @@ interface Question {
           </div>
         </div>
       }
-
-      <!-- Success Popup -->
       @if (showSuccessPopup) {
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
-          <div class="bg-white rounded-lg p-6 w-11/12 max-w-md sm:max-w-lg">
+          <div class="bg-white rounded-lg p-6 w-11/12 max-w-md sm:max-w-lg max-h-[80vh] overflow-y-auto">
             <h2 class="text-lg font-semibold text-[#9D1616] mb-4">สำเร็จ!</h2>
-            <p class="text-gray-700 mb-6">คุณทำแบบทดสอบครบ 10 ข้อเรียบร้อยแล้ว!</p>
+            <p class="text-gray-700 mb-6">คุณทำแบบทดสอบครบ {{ questions.length }} ข้อเรียบร้อยแล้ว! คะแนน: {{ score }} / {{ questions.length }}</p>
+            <div class="mb-6">
+              <h3 class="text-lg font-semibold text-[#9D1616] mb-2">เฉลย</h3>
+              <div *ngFor="let answer of answers; let i = index" class="mb-4">
+                <p class="text-gray-700 mb-1">คำถาม {{ i + 1 }}: {{ answer.question.text }}</p>
+                <p class="mb-1">
+                  คุณเลือก: 
+                  <span [ngClass]="{'text-green-600': answer.isCorrect, 'text-red-600': !answer.isCorrect}">
+                    {{ answer.selectedAnswer }}
+                  </span>
+                </p>
+                <p class="text-gray-700">คำตอบที่ถูกต้อง: {{ answer.question.options[answer.question.answerIndex] }}</p>
+              </div>
+            </div>
             <div class="flex justify-end space-x-2">
               <button
                 (click)="restartGame()"
@@ -163,20 +167,34 @@ export class GuessWordGameComponent implements OnInit, OnDestroy {
   currentQuestionIndex: number = 0;
   currentQuestion: Question;
   questions: Question[] = [];
+  answers: Answer[] = [];
+  score: number = 0;
   private timerSubscription: Subscription | null = null;
   private countdownSubscription: Subscription | null = null;
 
-  constructor(private cdr: ChangeDetectorRef, private router: Router) {
-    // Mock questions
-    this.questions = Array.from({ length: 10 }, (_, i) => ({
-      image: `https://via.placeholder.com/300?text=Question${i + 1}`,
-      choices: [`คำตอบ ${i * 4 + 1}`, `คำตอบ ${i * 4 + 2}`, `คำตอบ ${i * 4 + 3}`, `คำตอบ ${i * 4 + 4}`],
-      correctAnswer: `คำตอบ ${i * 4 + 1}`
-    }));
-    this.currentQuestion = this.questions[0];
+  constructor(private cdr: ChangeDetectorRef, private router: Router, private http: HttpClient) {
+    this.currentQuestion = { text: '', options: [], answerIndex: 0, image: '' };
   }
 
-  ngOnInit() {}
+  ngOnInit() {
+    this.http.get(`${environment.apiUrl}/quizzes`).subscribe({
+      next: (response: any) => {
+        console.log('Quizzes fetched:', response);
+        const allQuestions = response.flatMap((quiz: any) => quiz.questions);
+        this.questions = allQuestions.map((q: any) => ({
+          text: q.text,
+          options: q.options,
+          answerIndex: q.answerIndex,
+          image: `https://via.placeholder.com/300?text=${encodeURIComponent(q.options[q.answerIndex])}`
+        }));
+        this.currentQuestion = this.questions[0];
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        console.error('Error fetching quizzes:', error);
+      }
+    });
+  }
 
   ngOnDestroy() {
     this.stopTimers();
@@ -217,13 +235,21 @@ export class GuessWordGameComponent implements OnInit, OnDestroy {
   }
 
   selectAnswer(index: number) {
-    console.log(`Selected answer: ${this.currentQuestion.choices[index]}`);
+    const isCorrect = index === this.currentQuestion.answerIndex;
+    if (isCorrect) {
+      this.score++;
+    }
+    this.answers.push({
+      question: this.currentQuestion,
+      selectedAnswer: this.currentQuestion.options[index],
+      isCorrect
+    });
     this.nextQuestion();
   }
 
   nextQuestion() {
     this.currentQuestionIndex++;
-    if (this.currentQuestionIndex < 10) {
+    if (this.currentQuestionIndex < this.questions.length) {
       this.currentQuestion = this.questions[this.currentQuestionIndex];
       this.startQuizTimer();
     } else {
@@ -238,6 +264,8 @@ export class GuessWordGameComponent implements OnInit, OnDestroy {
     this.currentQuestion = this.questions[0];
     this.showGameOverPopup = false;
     this.showSuccessPopup = false;
+    this.answers = [];
+    this.score = 0;
     this.showStartPopup = true;
     this.stopTimers();
     this.cdr.markForCheck();

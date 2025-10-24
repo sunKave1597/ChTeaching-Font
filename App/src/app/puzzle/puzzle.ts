@@ -73,7 +73,7 @@ export class PuzzleContainer {
   modes = signal<GameMode[]>([
     { name: 'บัตรคำศัพท์', icon: 'lightbulb', description: 'ไอคอน หลอดไฟ บัตรคำศัพท์' },
     { name: 'ทายคำศัพท์', icon: 'magnifying-glass', description: 'ไอคอน แว่นขยาย ทายคำศัพท์' },
-    { name: 'เกมส์ฝึกฟัง', icon: 'headphones', description: 'ไอคอน หูฟัง เกมส์ฝึกฟัง' },
+    // { name: 'เกมส์ฝึกฟัง', icon: 'headphones', description: 'ไอคอน หูฟัง เกมส์ฝึกฟัง' },
   ]);
 
   selectedMode = signal<GameMode | null>(null);
