@@ -4,6 +4,8 @@ import { Router, RouterModule } from '@angular/router';
 import { interval, Subscription, Observable } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { SpinnerService } from '../../spinner.service';
+import { AuthService } from '../../auth.service';
+import { environment } from '../../env';
 
 interface Question {
   questionId: string;
@@ -228,19 +230,26 @@ export class GuessWordGameComponent implements OnInit, OnDestroy {
   answers: Answer[] = [];
   score: number = 0;
   isLoading$!: Observable<boolean>;
+  user: { token: string } | null = null;
 
   private timerSubscription: Subscription | null = null;
   private countdownSubscription: Subscription | null = null;
-  private readonly quizApiUrl = 'https://ch-teaching-50k3sh0jk-aoms-projects-45bb007e.vercel.app/api/quizzes/random/game';
-  private readonly imageApiUrl = 'https://ch-teaching-50k3sh0jk-aoms-projects-45bb007e.vercel.app/api/quiz-images/by-question';
+  private readonly quizApiUrl = `${environment.apiUrl}/quizzes/random/game`;
+  private readonly imageApiUrl = `${environment.apiUrl}/quiz-images/by-question`;
+  private readonly quizHistoryApiUrl = `${environment.apiUrl}/quiz-history`;
 
   constructor(
     private cdr: ChangeDetectorRef,
     private router: Router,
     private http: HttpClient,
-    private spinnerService: SpinnerService
+    private spinnerService: SpinnerService,
+    private authService: AuthService
   ) {
     this.isLoading$ = this.spinnerService.isLoading$;
+    this.authService.user$.subscribe(user => {
+      this.user = user;
+      this.cdr.markForCheck();
+    });
   }
 
   ngOnInit(): void {
@@ -297,7 +306,6 @@ export class GuessWordGameComponent implements OnInit, OnDestroy {
       next: (response) => {
         if (response.base64Data && response.contentType) {
           try {
-            // Fix malformed base64 data by removing all instances of "data:image/png;base64:" or "data:image/png;base64,"
             let base64Data = response.base64Data;
             const prefixes = ['data:image/png;base64:', 'data:image/png;base64,'];
             for (const prefix of prefixes) {
@@ -393,7 +401,36 @@ export class GuessWordGameComponent implements OnInit, OnDestroy {
     } else {
       this.showSuccessPopup = true;
       this.stopTimers();
+      this.saveScore();
       this.cdr.markForCheck();
+    }
+  }
+
+  saveScore(): void {
+    if (this.user?.token) {
+      this.spinnerService.show();
+      const payload = {
+        mode: 'game',
+        score: this.score
+      };
+      this.http
+        .post(this.quizHistoryApiUrl, payload, {
+          headers: { Authorization: `Bearer ${this.user.token}` }
+        })
+        .subscribe({
+          next: () => {
+            console.log('Score saved successfully');
+            this.spinnerService.hide();
+            this.cdr.markForCheck();
+          },
+          error: (error) => {
+            console.error('Error saving score:', error);
+            this.spinnerService.hide();
+            this.cdr.markForCheck();
+          }
+        });
+    } else {
+      console.log('No user logged in, score not saved');
     }
   }
 

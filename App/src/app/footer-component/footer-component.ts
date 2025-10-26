@@ -334,7 +334,7 @@ interface Vocabulary {
             <h2 class="text-lg font-semibold text-[#9D1616] mb-4">เพิ่มคำศัพท์</h2>
             <form [formGroup]="vocabularyForm" (ngSubmit)="submitVocabulary()">
               <div class="mb-4">
-                <label class="block text-gray-700">คำศัพท์ภาษาจีน</label>
+                <label class="block text-gray-700">คำศัพท์ภาษจีน</label>
                 <input
                   formControlName="chWord"
                   type="text"
@@ -572,29 +572,33 @@ interface Vocabulary {
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div class="bg-white rounded-lg p-6 w-11/12 max-w-md sm:max-w-lg max-h-[80vh] overflow-y-auto">
             <h2 class="text-lg font-semibold text-[#9D1616] mb-4">ประวัติคะแนนแบบทดสอบ</h2>
-            @if (quizHistory.length > 0) {
-              <div class="overflow-x-auto">
-                <table class="min-w-[600px] table-auto border-collapse">
-                  <thead>
-                    <tr class="bg-[#9D1616] text-white">
-                      <th class="px-4 py-2 text-left w-1/3 min-w-[200px]">โหมด</th>
-                      <th class="px-4 py-2 text-left w-1/6 min-w-[100px]">คะแนน</th>
-                      <th class="px-4 py-2 text-left w-1/2 min-w-[300px]">วันที่เล่น</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (entry of quizHistory; track entry._id) {
-                      <tr class="border-b border-gray-200">
-                        <td class="px-4 py-2 text-gray-700">{{ entry.mode === 'pretest' ? 'แบบทดสอบก่อนเรียน' : 'เกม' }}</td>
-                        <td class="px-4 py-2 text-gray-700">{{ entry.score }}</td>
-                        <td class="px-4 py-2 text-gray-700">{{ formatDate(entry.playedAt) }}</td>
+            @if (isQuizHistoryLoaded) {
+              @if (quizHistory.length > 0) {
+                <div class="overflow-x-auto">
+                  <table class="min-w-[600px] table-auto border-collapse">
+                    <thead>
+                      <tr class="bg-[#9D1616] text-white">
+                        <th class="px-4 py-2 text-left w-1/3 min-w-[200px]">โหมด</th>
+                        <th class="px-4 py-2 text-left w-1/6 min-w-[100px]">คะแนน</th>
+                        <th class="px-4 py-2 text-left w-1/2 min-w-[300px]">วันที่เล่น</th>
                       </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      @for (entry of quizHistory; track entry._id) {
+                        <tr class="border-b border-gray-200">
+                          <td class="px-4 py-2 text-gray-700">{{ entry.mode === 'pretest' ? 'แบบทดสอบก่อนเรียน' : 'เกม' }}</td>
+                          <td class="px-4 py-2 text-gray-700">{{ entry.score }}</td>
+                          <td class="px-4 py-2 text-gray-700">{{ formatDate(entry.playedAt) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <p class="text-gray-700 mb-4">ไม่มีประวัติคะแนน</p>
+              }
             } @else {
-              <p class="text-gray-700 mb-4">ไม่มีประวัติคะแนน</p>
+              <p class="text-gray-700 mb-4">กำลังโหลดประวัติคะแนน...</p>
             }
             <div class="flex justify-end mt-4">
               <button
@@ -684,6 +688,7 @@ export class FooterComponent {
   vocabularyForm: FormGroup;
   editingVocabularyId: string | null = null;
   isLoading$!: Observable<boolean>;
+  isQuizHistoryLoaded = false;
   categories = [
     'ตัวเลข ลำดับ',
     'เกี่ยวกับฉัน',
@@ -1040,6 +1045,7 @@ export class FooterComponent {
     this.showAddVocabularyPopup = false;
     this.showManageVocabularyPopup = false;
     this.showEditVocabularyPopup = false;
+    this.isQuizHistoryLoaded = false;
     this.cdr.markForCheck();
   }
 
@@ -1053,6 +1059,7 @@ export class FooterComponent {
     this.showAddVocabularyPopup = false;
     this.showManageVocabularyPopup = false;
     this.showEditVocabularyPopup = false;
+    this.isQuizHistoryLoaded = false;
     this.cdr.markForCheck();
   }
 
@@ -1146,6 +1153,7 @@ export class FooterComponent {
     this.showAddVocabularyPopup = false;
     this.showManageVocabularyPopup = false;
     this.showEditVocabularyPopup = false;
+    this.isQuizHistoryLoaded = false;
     this.cdr.markForCheck();
   }
 
@@ -1159,6 +1167,7 @@ export class FooterComponent {
     this.showAddVocabularyPopup = false;
     this.showManageVocabularyPopup = false;
     this.showEditVocabularyPopup = false;
+    this.isQuizHistoryLoaded = false;
     this.cdr.markForCheck();
   }
 
@@ -1173,22 +1182,29 @@ export class FooterComponent {
     this.showManageVocabularyPopup = false;
     this.showEditVocabularyPopup = false;
     if (this.showQuizHistoryPopup && this.user?.token) {
+      this.isQuizHistoryLoaded = false;
+      this.quizHistory = [];
       this.spinnerService.show();
       this.http.get<QuizHistory[]>(`${environment.apiUrl}/quiz-history/me`, {
         headers: { Authorization: `Bearer ${this.user.token}` }
       }).subscribe({
         next: (response) => {
           this.quizHistory = response;
+          this.isQuizHistoryLoaded = true;
           this.spinnerService.hide();
           this.cdr.markForCheck();
         },
         error: (error) => {
           console.error('Error fetching quiz history:', error);
           this.quizHistory = [];
+          this.isQuizHistoryLoaded = true;
           this.spinnerService.hide();
           this.cdr.markForCheck();
         }
       });
+    } else {
+      this.isQuizHistoryLoaded = false;
+      this.quizHistory = [];
     }
     this.cdr.markForCheck();
   }
@@ -1256,6 +1272,8 @@ export class FooterComponent {
   logout() {
     this.authService.logout();
     this.showDropdown = false;
+    this.isQuizHistoryLoaded = false;
+    this.quizHistory = [];
     this.router.navigateByUrl('/').then(success => {
       console.log('Navigation success:', success);
     }).catch(error => {
