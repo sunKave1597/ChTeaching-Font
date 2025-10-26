@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../env';
 import { AuthService } from '../../auth.service';
+import { User } from '../models/user';
 
 @Component({
   selector: 'app-login-form',
@@ -47,10 +48,10 @@ export class LoginFormComponent {
       password: this.password
     };
 
-    this.http.post(`${environment.apiUrl}/auth/login`, loginData).subscribe({
-      next: (response: any) => {
+    this.http.post<User>(`${environment.apiUrl}/auth/login`, loginData).subscribe({
+      next: (response: User) => { // Type response as User
         console.log('Login successful:', response);
-        this.authService.setUser(response); // Store user data
+        this.authService.setUser(response);
         this.router.navigateByUrl('/home').then(success => {
           console.log('Navigation success:', success);
         });

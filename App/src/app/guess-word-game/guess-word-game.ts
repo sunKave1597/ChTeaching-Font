@@ -1,11 +1,12 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { interval, Subscription } from 'rxjs';
+import { interval, Subscription, Observable } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
-import { environment } from '../../env';
+import { SpinnerService } from '../../spinner.service';
 
 interface Question {
+  questionId: string;
   text: string;
   options: string[];
   answerIndex: number;
@@ -16,6 +17,33 @@ interface Answer {
   question: Question;
   selectedAnswer: string;
   isCorrect: boolean;
+}
+
+interface QuizImageResponse {
+  _id: string;
+  quizId: string;
+  questionId: string;
+  kind: string;
+  contentType: string;
+  caption: string;
+  base64Data: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface QuizResponse {
+  type: string;
+  total: number;
+  limit: number;
+  items: {
+    type: string;
+    category: string;
+    quizId: string;
+    questionId: string;
+    text: string;
+    options: string[];
+    answerIndex: number;
+  }[];
 }
 
 @Component({
@@ -34,7 +62,17 @@ interface Answer {
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
       </button>
-      @if (showStartPopup) {
+      @if (isLoading$ | async) {
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div class="bg-white rounded-lg p-6 w-11/12 max-w-md sm:max-w-lg">
+            <h2 class="text-lg font-semibold text-[#9D1616] mb-4">กำลังโหลด...</h2>
+            <div class="flex justify-center">
+              <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-[#9D1616]"></div>
+            </div>
+          </div>
+        </div>
+      }
+      @if (showStartPopup && !(isLoading$ | async)) {
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
           <div class="bg-white rounded-lg p-6 w-11/12 max-w-md sm:max-w-lg">
             <h2 class="text-lg font-semibold text-[#9D1616] mb-4">ทายคำศัพท์</h2>
@@ -50,7 +88,7 @@ interface Answer {
           </div>
         </div>
       }
-      @if (showCountdown) {
+      @if (showCountdown && !(isLoading$ | async)) {
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
           <div class="bg-white rounded-lg p-6 w-11/12 max-w-md sm:max-w-lg">
             <h2 class="text-lg font-semibold text-[#9D1616] mb-4">เริ่มใน</h2>
@@ -64,17 +102,27 @@ interface Answer {
           </div>
         </div>
       }
-      @if (!showStartPopup && !showCountdown && !showSuccessPopup) {
+      @if (!showStartPopup && !showCountdown && !showSuccessPopup && !showGameOverPopup && !(isLoading$ | async)) {
         <div class="flex flex-col items-center w-full max-w-md sm:max-w-lg">
           <div class="text-center text-xl text-[#9D1616] mb-4">
             คำถามที่ {{ currentQuestionIndex + 1 }} / {{ questions.length }}
           </div>
+          <div class="text-center text-lg font-semibold text-[#9D1616] mb-4">
+            {{ currentQuestion.text }}
+          </div>
           <div class="mb-4">
-            <img
-              [src]="currentQuestion.image"
-              alt="Guess the Word Image"
-              class="w-64 h-64 object-cover rounded-lg shadow-md sm:w-80 sm:h-80"
-            />
+            @if (currentQuestion.image) {
+              <img
+                [src]="currentQuestion.image"
+                [alt]="currentQuestion.text"
+                class="w-64 h-64 object-cover rounded-lg shadow-md sm:w-80 sm:h-80"
+                (error)="handleImageError($event)"
+              />
+            } @else {
+              <div class="w-64 h-64 flex items-center justify-center bg-gray-200 rounded-lg shadow-md sm:w-80 sm:h-80">
+                <span class="text-gray-500">ไม่มีรูปภาพ</span>
+              </div>
+            }
           </div>
           <div class="w-full mb-8">
             <div class="text-center text-[#9D1616] mb-2">เวลาเหลือ: {{ timeLeft }} วินาที</div>
@@ -96,7 +144,7 @@ interface Answer {
           </div>
         </div>
       }
-      @if (showGameOverPopup) {
+      @if (showGameOverPopup && !(isLoading$ | async)) {
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
           <div class="bg-white rounded-lg p-6 w-11/12 max-w-md sm:max-w-lg">
             <h2 class="text-lg font-semibold text-[#9D1616] mb-4">Game Over</h2>
@@ -118,7 +166,7 @@ interface Answer {
           </div>
         </div>
       }
-      @if (showSuccessPopup) {
+      @if (showSuccessPopup && !(isLoading$ | async)) {
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
           <div class="bg-white rounded-lg p-6 w-11/12 max-w-md sm:max-w-lg max-h-[80vh] overflow-y-auto">
             <h2 class="text-lg font-semibold text-[#9D1616] mb-4">สำเร็จ!</h2>
@@ -155,7 +203,17 @@ interface Answer {
       }
     </div>
   `,
-  styles: []
+  styles: [
+    `
+      .animate-spin {
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `
+  ]
 })
 export class GuessWordGameComponent implements OnInit, OnDestroy {
   showStartPopup: boolean = true;
@@ -165,123 +223,200 @@ export class GuessWordGameComponent implements OnInit, OnDestroy {
   countdown: number = 3;
   timeLeft: number = 30;
   currentQuestionIndex: number = 0;
-  currentQuestion: Question;
+  currentQuestion: Question = { questionId: '', text: '', options: [], answerIndex: 0, image: '' };
   questions: Question[] = [];
   answers: Answer[] = [];
   score: number = 0;
+  isLoading$!: Observable<boolean>;
+
   private timerSubscription: Subscription | null = null;
   private countdownSubscription: Subscription | null = null;
+  private readonly quizApiUrl = 'https://ch-teaching-50k3sh0jk-aoms-projects-45bb007e.vercel.app/api/quizzes/random/game';
+  private readonly imageApiUrl = 'https://ch-teaching-50k3sh0jk-aoms-projects-45bb007e.vercel.app/api/quiz-images/by-question';
 
-  constructor(private cdr: ChangeDetectorRef, private router: Router, private http: HttpClient) {
-    this.currentQuestion = { text: '', options: [], answerIndex: 0, image: '' };
+  constructor(
+    private cdr: ChangeDetectorRef,
+    private router: Router,
+    private http: HttpClient,
+    private spinnerService: SpinnerService
+  ) {
+    this.isLoading$ = this.spinnerService.isLoading$;
   }
 
-  ngOnInit() {
-    this.http.get(`${environment.apiUrl}/quizzes`).subscribe({
-      next: (response: any) => {
-        console.log('Quizzes fetched:', response);
-        const allQuestions = response.flatMap((quiz: any) => quiz.questions);
-        this.questions = allQuestions.map((q: any) => ({
-          text: q.text,
-          options: q.options,
-          answerIndex: q.answerIndex,
-          image: `https://via.placeholder.com/300?text=${encodeURIComponent(q.options[q.answerIndex])}`
+  ngOnInit(): void {
+    this.loadQuestions();
+  }
+
+  ngOnDestroy(): void {
+    this.stopTimers();
+  }
+
+  loadQuestions(): void {
+    this.spinnerService.show();
+    this.http.get<QuizResponse>(this.quizApiUrl).subscribe({
+      next: (response: QuizResponse) => {
+        this.questions = response.items.map(item => ({
+          questionId: item.questionId,
+          text: item.text,
+          options: item.options,
+          answerIndex: item.answerIndex,
+          image: ''
         }));
-        this.currentQuestion = this.questions[0];
-        this.cdr.markForCheck();
+        if (this.questions.length > 0) {
+          this.currentQuestion = this.questions[0];
+          this.loadImageForQuestion(0);
+        } else {
+          console.error('No questions received from API');
+          this.spinnerService.hide();
+          this.cdr.markForCheck();
+        }
       },
       error: (error) => {
-        console.error('Error fetching quizzes:', error);
+        console.error('Error fetching questions:', error);
+        this.spinnerService.hide();
+        this.cdr.markForCheck();
       }
     });
   }
 
-  ngOnDestroy() {
-    this.stopTimers();
+  loadImageForQuestion(index: number): void {
+    const question = this.questions[index];
+    if (!question.questionId) {
+      console.warn('Question ID is missing:', question);
+      question.image = '';
+      if (index === this.currentQuestionIndex) {
+        this.currentQuestion = question;
+      }
+      this.spinnerService.hide();
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const imageUrl = `${this.imageApiUrl}/${question.questionId}`;
+    this.http.get<QuizImageResponse>(imageUrl).subscribe({
+      next: (response) => {
+        if (response.base64Data && response.contentType) {
+          try {
+            // Fix malformed base64 data by removing all instances of "data:image/png;base64:" or "data:image/png;base64,"
+            let base64Data = response.base64Data;
+            const prefixes = ['data:image/png;base64:', 'data:image/png;base64,'];
+            for (const prefix of prefixes) {
+              while (base64Data.startsWith(prefix)) {
+                base64Data = base64Data.replace(prefix, '');
+              }
+            }
+            const isValidBase64 = /^[A-Za-z0-9+/=]+$/.test(base64Data);
+            if (!isValidBase64) {
+              throw new Error('Invalid base64 data');
+            }
+            question.image = `data:${response.contentType};base64,${base64Data}`;
+          } catch (error) {
+            console.error(`Invalid base64 data for question ${question.questionId}:`, error);
+            question.image = '';
+          }
+        } else {
+          console.warn(`No base64Data or contentType for question ${question.questionId}`);
+          question.image = '';
+        }
+        if (index === this.currentQuestionIndex) {
+          this.currentQuestion = question;
+        }
+        this.spinnerService.hide();
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        console.error(`Error fetching image for question ${question.questionId}:`, error);
+        question.image = '';
+        if (index === this.currentQuestionIndex) {
+          this.currentQuestion = question;
+        }
+        this.spinnerService.hide();
+        this.cdr.markForCheck();
+      }
+    });
   }
 
-  startGame() {
+  handleImageError(event: Event): void {
+    console.warn('Image failed to load:', event);
+    const imgElement = event.target as HTMLImageElement;
+    imgElement.style.display = 'none';
+  }
+
+  startGame(): void {
     this.showStartPopup = false;
     this.showCountdown = true;
     this.countdown = 3;
     this.countdownSubscription = interval(1000).subscribe(() => {
-      if (this.countdown > 0) {
-        this.countdown--;
-        this.cdr.markForCheck();
-      } else {
+      this.countdown--;
+      if (this.countdown <= 0) {
         this.showCountdown = false;
         this.countdownSubscription?.unsubscribe();
         this.startQuizTimer();
-        this.cdr.markForCheck();
       }
+      this.cdr.markForCheck();
     });
   }
 
-  startQuizTimer() {
-    if (this.timerSubscription) {
-      this.timerSubscription.unsubscribe();
-    }
+  startQuizTimer(): void {
+    this.stopTimers();
     this.timeLeft = 30;
     this.timerSubscription = interval(1000).subscribe(() => {
-      if (this.timeLeft > 0) {
-        this.timeLeft--;
-        this.cdr.markForCheck();
-      } else {
+      this.timeLeft--;
+      if (this.timeLeft <= 0) {
         this.showGameOverPopup = true;
         this.timerSubscription?.unsubscribe();
-        this.cdr.markForCheck();
       }
+      this.cdr.markForCheck();
     });
   }
 
-  selectAnswer(index: number) {
+  selectAnswer(index: number): void {
     const isCorrect = index === this.currentQuestion.answerIndex;
     if (isCorrect) {
       this.score++;
     }
     this.answers.push({
-      question: this.currentQuestion,
+      question: { ...this.currentQuestion },
       selectedAnswer: this.currentQuestion.options[index],
       isCorrect
     });
     this.nextQuestion();
   }
 
-  nextQuestion() {
+  nextQuestion(): void {
     this.currentQuestionIndex++;
     if (this.currentQuestionIndex < this.questions.length) {
+      this.spinnerService.show();
       this.currentQuestion = this.questions[this.currentQuestionIndex];
+      this.loadImageForQuestion(this.currentQuestionIndex);
       this.startQuizTimer();
     } else {
       this.showSuccessPopup = true;
-      this.timerSubscription?.unsubscribe();
+      this.stopTimers();
+      this.cdr.markForCheck();
     }
-    this.cdr.markForCheck();
   }
 
-  restartGame() {
+  restartGame(): void {
     this.currentQuestionIndex = 0;
-    this.currentQuestion = this.questions[0];
-    this.showGameOverPopup = false;
-    this.showSuccessPopup = false;
     this.answers = [];
     this.score = 0;
+    this.showGameOverPopup = false;
+    this.showSuccessPopup = false;
     this.showStartPopup = true;
     this.stopTimers();
-    this.cdr.markForCheck();
+    this.loadQuestions();
   }
 
-  returnToPuzzle() {
+  returnToPuzzle(): void {
     this.stopTimers();
     this.router.navigateByUrl('/puzzle');
   }
 
-  private stopTimers() {
-    if (this.timerSubscription) {
-      this.timerSubscription.unsubscribe();
-    }
-    if (this.countdownSubscription) {
-      this.countdownSubscription.unsubscribe();
-    }
+  private stopTimers(): void {
+    this.timerSubscription?.unsubscribe();
+    this.countdownSubscription?.unsubscribe();
+    this.timerSubscription = null;
+    this.countdownSubscription = null;
   }
 }

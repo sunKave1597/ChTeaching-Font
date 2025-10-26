@@ -7,6 +7,7 @@ import { MainComponent } from './main-component/main-component';
 import { PuzzleContainer } from './puzzle/puzzle';
 import { PretestComponent } from './pretest.component/pretest.component';
 import { GuessWordGameComponent } from './guess-word-game/guess-word-game';
+import { BookContainer } from './book/book';
 
 export const routes: Routes = [
   { path: '', component: LandingPageComponent, title: 'หน้าแรก' },
@@ -18,7 +19,8 @@ export const routes: Routes = [
       { path: 'home', component: MainComponent, title: 'หน้าหลัก' },
       { path: 'puzzle', component: PuzzleContainer, title: 'เกม' },
       { path: 'puzzle/guess-word', component: GuessWordGameComponent, title: 'ทายคำศัพท์' },
-      { path: 'pretest', component: PretestComponent, title: 'แบบทดสอบก่อนเรียน' }
+      { path: 'pretest', component: PretestComponent, title: 'แบบทดสอบก่อนเรียน' },
+      { path: 'book', component: BookContainer, title: 'เนื้อหา' }
     ]
   },
   { path: 'register', component: RegisterLayoutComponent, title: 'สมัครสมาชิก' },

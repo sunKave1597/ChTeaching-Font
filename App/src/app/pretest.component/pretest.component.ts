@@ -5,9 +5,14 @@ import { Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../env';
 import { SpinnerService } from '../../spinner.service';
+import { AuthService } from '../../auth.service';
 import { Observable } from 'rxjs';
 
 interface Question {
+  type: string;
+  category: string;
+  quizId: string;
+  questionId: string;
   text: string;
   options: string[];
   answerIndex: number;
@@ -43,7 +48,7 @@ interface Answer {
       @if (!showResults && questions.length > 0 && !(isLoading$ | async)) {
         <div class="flex flex-col items-center w-full max-w-md sm:max-w-lg overflow-y-auto pb-20">
           <h2 class="text-2xl font-bold text-[#9D1616] mb-6">แบบทดสอบก่อนเรียน</h2>
-          @for (question of questions; track question.text; let index = $index) {
+          @for (question of questions; track question.questionId; let index = $index) {
             <div
               #questionElements
               class="w-full mb-8"
@@ -75,6 +80,18 @@ interface Answer {
           </button>
         </div>
       }
+      @if (!showResults && questions.length === 0 && !(isLoading$ | async)) {
+        <div class="flex flex-col items-center w-full max-w-md sm:max-w-lg">
+          <h2 class="text-2xl font-bold text-[#9D1616] mb-6">แบบทดสอบก่อนเรียน</h2>
+          <p class="text-gray-700 mb-4">ไม่สามารถโหลดคำถามได้ กรุณาลองอีกครั้ง</p>
+          <button
+            (click)="returnToMain()"
+            class="px-4 py-2 bg-[#9D1616] text-white rounded-lg hover:bg-[#7B1111]"
+          >
+            กลับสู่หน้าเลือกโหมด
+          </button>
+        </div>
+      }
       @if (showResults) {
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
           <div class="bg-white rounded-lg p-6 w-11/12 max-w-md sm:max-w-lg max-h-[80vh] overflow-y-auto">
@@ -82,7 +99,7 @@ interface Answer {
             <p class="text-gray-700 mb-6">คุณทำแบบทดสอบครบ {{ questions.length }} ข้อเรียบร้อยแล้ว! คะแนน: {{ score }} / {{ questions.length }}</p>
             <div class="mb-6">
               <h3 class="text-lg font-semibold text-[#9D1616] mb-2">เฉลย</h3>
-              @for (answer of answers; track answer.question.text; let index = $index) {
+              @for (answer of answers; track answer.question.questionId; let index = $index) {
                 <div class="mb-4">
                   <p class="text-gray-700 mb-1">คำถาม {{ index + 1 }}: {{ answer.question.text }}</p>
                   <p class="mb-1">
@@ -122,28 +139,24 @@ export class PretestComponent implements OnInit {
   score: number = 0;
   showResults: boolean = false;
   showUnanswered: boolean = false;
-  isLoading$: Observable<boolean> = new Observable(); // Initialize to avoid TS2339
+  isLoading$: Observable<boolean> = new Observable();
   @ViewChildren('questionElements') questionElements!: QueryList<ElementRef>;
 
   constructor(
     private cdr: ChangeDetectorRef,
     private router: Router,
     private http: HttpClient,
-    private spinnerService: SpinnerService
+    private spinnerService: SpinnerService,
+    private authService: AuthService
   ) {
     this.isLoading$ = this.spinnerService.isLoading$;
   }
 
   ngOnInit() {
     this.spinnerService.show();
-    this.http.get<Question[]>(`${environment.apiUrl}/quizzes`).subscribe({
+    this.http.get(`${environment.apiUrl}/quizzes/random/pretest`).subscribe({
       next: (response: any) => {
-        const allQuestions = response.flatMap((quiz: any) => quiz.questions);
-        this.questions = allQuestions.map((q: any) => ({
-          text: q.text,
-          options: q.options,
-          answerIndex: q.answerIndex
-        }));
+        this.questions = Array.isArray(response.items) ? response.items : [];
         this.answers = this.questions.map(q => ({
           question: q,
           selectedAnswer: '',
@@ -154,6 +167,8 @@ export class PretestComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error fetching quizzes:', error);
+        this.questions = [];
+        this.answers = [];
         this.spinnerService.hide();
         this.cdr.markForCheck();
       }
@@ -173,7 +188,6 @@ export class PretestComponent implements OnInit {
     if (!this.allQuestionsAnswered()) {
       this.showUnanswered = true;
       this.cdr.markForCheck();
-      // Find the first unanswered question and scroll to it
       const firstUnansweredIndex = this.answers.findIndex(answer => answer.selectedAnswer === '');
       if (firstUnansweredIndex !== -1 && this.questionElements) {
         const element = this.questionElements.toArray()[firstUnansweredIndex]?.nativeElement;
@@ -193,6 +207,18 @@ export class PretestComponent implements OnInit {
           this.score++;
         }
       });
+      const user = this.authService.getUser();
+      if (user && user.token) {
+        this.http.post(`${environment.apiUrl}/quiz-history`, {
+          mode: 'pretest',
+          score: this.score
+        }, {
+          headers: { Authorization: `Bearer ${user.token}` }
+        }).subscribe({
+          next: () => console.log('Quiz history saved'),
+          error: (error) => console.error('Error saving quiz history:', error)
+        });
+      }
       this.showResults = true;
       this.spinnerService.hide();
       this.cdr.markForCheck();
