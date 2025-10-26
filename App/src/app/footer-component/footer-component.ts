@@ -43,7 +43,12 @@ interface Vocabulary {
   chWord: string;
   pinYin: string;
   thWord: string;
-  image: string;
+  category: string;
+  image: {
+    base64Data: string;
+    contentType: string;
+    caption: string;
+  };
 }
 
 @Component({
@@ -229,11 +234,12 @@ interface Vocabulary {
                     <option value="" disabled>เลือกหมวดหมู่</option>
                     <option value="ตัวเลข ลำดับ">ตัวเลข ลำดับ</option>
                     <option value="เกี่ยวกับฉัน">เกี่ยวกับฉัน</option>
-                    <option value="สวัสดีทักท้าย">สวัสดีทักท้าย</option>
+                    <option value="สวัสดีทักทาย">สวัสดีทักทาย</option>
                     <option value="อาหาร">อาหาร</option>
                     <option value="ท้องถนน">ท้องถนน</option>
                     <option value="ฤดูกาล">ฤดูกาล</option>
                     <option value="ครอบครัว">ครอบครัว</option>
+                    <option value="ผลไม้">ผลไม้</option>
                   </select>
                   @if (questionForm.get('category')?.errors?.['required'] && questionForm.get('category')?.touched) {
                     <p class="text-red-600 text-sm mt-1">กรุณาเลือกหมวดหมู่</p>
@@ -288,7 +294,7 @@ interface Vocabulary {
                   <label class="block text-gray-700">ภาพ</label>
                   <input
                     type="file"
-                    accept="image/png,image/jpeg"
+                    accept="image/jpeg"
                     (change)="onFileChange($event)"
                     class="w-full p-2 border rounded-lg"
                   />
@@ -334,12 +340,27 @@ interface Vocabulary {
             <h2 class="text-lg font-semibold text-[#9D1616] mb-4">เพิ่มคำศัพท์</h2>
             <form [formGroup]="vocabularyForm" (ngSubmit)="submitVocabulary()">
               <div class="mb-4">
+                <label class="block text-gray-700">หมวดหมู่</label>
+                <select
+                  formControlName="category"
+                  class="w-full p-2 border rounded-lg"
+                >
+                  <option value="" disabled>เลือกหมวดหมู่</option>
+                  @for (category of categories; track category) {
+                    <option [value]="category">{{ category }}</option>
+                  }
+                </select>
+                @if (vocabularyForm.get('category')?.errors?.['required'] && vocabularyForm.get('category')?.touched) {
+                  <p class="text-red-600 text-sm mt-1">กรุณาเลือกหมวดหมู่</p>
+                }
+              </div>
+              <div class="mb-4">
                 <label class="block text-gray-700">คำศัพท์ภาษจีน</label>
                 <input
                   formControlName="chWord"
                   type="text"
                   class="w-full p-2 border rounded-lg"
-                  placeholder="เช่น 你好"
+                  placeholder="เช่น 苹果"
                 />
                 @if (vocabularyForm.get('chWord')?.errors?.['required'] && vocabularyForm.get('chWord')?.touched) {
                   <p class="text-red-600 text-sm mt-1">กรุณากรอกคำศัพท์ภาษจีน</p>
@@ -351,7 +372,7 @@ interface Vocabulary {
                   formControlName="pinYin"
                   type="text"
                   class="w-full p-2 border rounded-lg"
-                  placeholder="เช่น nǐ hǎo"
+                  placeholder="เช่น píngguǒ"
                 />
                 @if (vocabularyForm.get('pinYin')?.errors?.['required'] && vocabularyForm.get('pinYin')?.touched) {
                   <p class="text-red-600 text-sm mt-1">กรุณากรอกพินอิน</p>
@@ -363,23 +384,32 @@ interface Vocabulary {
                   formControlName="thWord"
                   type="text"
                   class="w-full p-2 border rounded-lg"
-                  placeholder="เช่น สวัสดี"
+                  placeholder="เช่น แอปเปิล"
                 />
                 @if (vocabularyForm.get('thWord')?.errors?.['required'] && vocabularyForm.get('thWord')?.touched) {
                   <p class="text-red-600 text-sm mt-1">กรุณากรอกคำแปลภาษาไทย</p>
                 }
               </div>
               <div class="mb-4">
-                <label class="block text-gray-700">ภาพ</label>
+                <label class="block text-gray-700">ภาพ (เฉพาะ .jpg หรือ .jpeg)</label>
                 <input
                   type="file"
-                  accept="image/png,image/jpeg"
+                  accept="image/jpeg"
                   (change)="onVocabularyFileChange($event)"
                   class="w-full p-2 border rounded-lg"
                 />
-                @if (vocabularyForm.get('image')?.errors?.['required'] && vocabularyForm.get('image')?.touched) {
+                @if (vocabularyForm.get('image')?.get('base64Data')?.errors?.['required'] && vocabularyForm.get('image')?.get('base64Data')?.touched) {
                   <p class="text-red-600 text-sm mt-1">กรุณาอัปโหลดภาพ</p>
                 }
+              </div>
+              <div class="mb-4">
+                <label class="block text-gray-700">คำอธิบายภาพ (ไม่บังคับ)</label>
+                <input
+                  formControlName="imageCaption"
+                  type="text"
+                  class="w-full p-2 border rounded-lg"
+                  placeholder="เช่น ภาพผลแอปเปิล"
+                />
               </div>
               <div class="flex justify-end space-x-2">
                 <button
@@ -409,6 +439,7 @@ interface Vocabulary {
                 <table class="min-w-[600px] table-auto border-collapse">
                   <thead>
                     <tr class="bg-[#9D1616] text-white">
+                      <th class="px-4 py-2 text-left">หมวดหมู่</th>
                       <th class="px-4 py-2 text-left">คำศัพท์ภาษจีน</th>
                       <th class="px-4 py-2 text-left">พินอิน</th>
                       <th class="px-4 py-2 text-left">คำแปลภาษาไทย</th>
@@ -418,6 +449,7 @@ interface Vocabulary {
                   <tbody>
                     @for (vocab of vocabularies; track vocab._id) {
                       <tr class="border-b border-gray-200">
+                        <td class="px-4 py-2 text-gray-700">{{ vocab.category }}</td>
                         <td class="px-4 py-2 text-gray-700">{{ vocab.chWord }}</td>
                         <td class="px-4 py-2 text-gray-700">{{ vocab.pinYin }}</td>
                         <td class="px-4 py-2 text-gray-700">{{ vocab.thWord }}</td>
@@ -460,12 +492,27 @@ interface Vocabulary {
             <h2 class="text-lg font-semibold text-[#9D1616] mb-4">แก้ไขคำศัพท์</h2>
             <form [formGroup]="vocabularyForm" (ngSubmit)="submitEditVocabulary()">
               <div class="mb-4">
+                <label class="block text-gray-700">หมวดหมู่</label>
+                <select
+                  formControlName="category"
+                  class="w-full p-2 border rounded-lg"
+                >
+                  <option value="" disabled>เลือกหมวดหมู่</option>
+                  @for (category of categories; track category) {
+                    <option [value]="category">{{ category }}</option>
+                  }
+                </select>
+                @if (vocabularyForm.get('category')?.errors?.['required'] && vocabularyForm.get('category')?.touched) {
+                  <p class="text-red-600 text-sm mt-1">กรุณาเลือกหมวดหมู่</p>
+                }
+              </div>
+              <div class="mb-4">
                 <label class="block text-gray-700">คำศัพท์ภาษจีน</label>
                 <input
                   formControlName="chWord"
                   type="text"
                   class="w-full p-2 border rounded-lg"
-                  placeholder="เช่น 你好"
+                  placeholder="เช่น 苹果"
                 />
                 @if (vocabularyForm.get('chWord')?.errors?.['required'] && vocabularyForm.get('chWord')?.touched) {
                   <p class="text-red-600 text-sm mt-1">กรุณากรอกคำศัพท์ภาษจีน</p>
@@ -477,7 +524,7 @@ interface Vocabulary {
                   formControlName="pinYin"
                   type="text"
                   class="w-full p-2 border rounded-lg"
-                  placeholder="เช่น nǐ hǎo"
+                  placeholder="เช่น píngguǒ"
                 />
                 @if (vocabularyForm.get('pinYin')?.errors?.['required'] && vocabularyForm.get('pinYin')?.touched) {
                   <p class="text-red-600 text-sm mt-1">กรุณากรอกพินอิน</p>
@@ -489,23 +536,32 @@ interface Vocabulary {
                   formControlName="thWord"
                   type="text"
                   class="w-full p-2 border rounded-lg"
-                  placeholder="เช่น สวัสดี"
+                  placeholder="เช่น แอปเปิล"
                 />
                 @if (vocabularyForm.get('thWord')?.errors?.['required'] && vocabularyForm.get('thWord')?.touched) {
                   <p class="text-red-600 text-sm mt-1">กรุณากรอกคำแปลภาษาไทย</p>
                 }
               </div>
               <div class="mb-4">
-                <label class="block text-gray-700">ภาพ</label>
+                <label class="block text-gray-700">ภาพ (เฉพาะ .jpg หรือ .jpeg)</label>
                 <input
                   type="file"
-                  accept="image/png,image/jpeg"
+                  accept="image/jpeg"
                   (change)="onVocabularyFileChange($event)"
                   class="w-full p-2 border rounded-lg"
                 />
-                @if (vocabularyForm.get('image')?.errors?.['required'] && vocabularyForm.get('image')?.touched) {
+                @if (vocabularyForm.get('image')?.get('base64Data')?.errors?.['required'] && vocabularyForm.get('image')?.get('base64Data')?.touched) {
                   <p class="text-red-600 text-sm mt-1">กรุณาอัปโหลดภาพ</p>
                 }
+              </div>
+              <div class="mb-4">
+                <label class="block text-gray-700">คำอธิบายภาพ (ไม่บังคับ)</label>
+                <input
+                  formControlName="imageCaption"
+                  type="text"
+                  class="w-full p-2 border rounded-lg"
+                  placeholder="เช่น ภาพผลแอปเปิล"
+                />
               </div>
               <div class="flex justify-end space-x-2">
                 <button
@@ -692,11 +748,12 @@ export class FooterComponent {
   categories = [
     'ตัวเลข ลำดับ',
     'เกี่ยวกับฉัน',
-    'สวัสดีทักท้าย',
+    'สวัสดีทักทาย',
     'อาหาร',
     'ท้องถนน',
     'ฤดูกาล',
-    'ครอบครัว'
+    'ครอบครัว',
+    'ผลไม้'
   ];
 
   constructor(
@@ -736,10 +793,16 @@ export class FooterComponent {
       caption: ['', Validators.required]
     });
     this.vocabularyForm = this.fb.group({
+      category: ['', Validators.required],
       chWord: ['', Validators.required],
       pinYin: ['', Validators.required],
       thWord: ['', Validators.required],
-      image: ['', Validators.required]
+      image: this.fb.group({
+        base64Data: ['', Validators.required],
+        contentType: ['', Validators.required],
+        caption: ['']
+      }),
+      imageCaption: ['']
     });
   }
 
@@ -756,8 +819,8 @@ export class FooterComponent {
         alert(`ขนาดไฟล์ต้องไม่เกิน ${maxSizeInMB}MB`);
         return;
       }
-      if (!['image/png', 'image/jpeg'].includes(file.type)) {
-        alert('อนุญาตเฉพาะไฟล์ PNG และ JPEG');
+      if (file.type !== 'image/jpeg') {
+        alert('อนุญาตเฉพาะไฟล์ JPG หรือ JPEG');
         return;
       }
       const img = new Image();
@@ -802,10 +865,14 @@ export class FooterComponent {
       const maxSizeInMB = 5;
       if (file.size > maxSizeInMB * 1024 * 1024) {
         alert(`ขนาดไฟล์ต้องไม่เกิน ${maxSizeInMB}MB`);
+        input.value = '';
+        this.cdr.markForCheck();
         return;
       }
-      if (!['image/png', 'image/jpeg'].includes(file.type)) {
-        alert('อนุญาตเฉพาะไฟล์ PNG และ JPEG');
+      if (file.type !== 'image/jpeg') {
+        alert('อนุญาตเฉพาะไฟล์ JPG หรือ JPEG');
+        input.value = '';
+        this.cdr.markForCheck();
         return;
       }
       const img = new Image();
@@ -832,10 +899,23 @@ export class FooterComponent {
         canvas.height = height;
         ctx?.drawImage(img, 0, 0, width, height);
         const base64Data = canvas.toDataURL(file.type, 0.7);
-        this.vocabularyForm.patchValue({ image: base64Data });
-        this.vocabularyForm.get('image')?.markAsTouched();
+        this.vocabularyForm.get('image')?.patchValue({
+          base64Data,
+          contentType: file.type,
+          caption: this.vocabularyForm.get('imageCaption')?.value || ''
+        });
+        this.vocabularyForm.get('image.base64Data')?.markAsTouched();
+        this.vocabularyForm.get('image.contentType')?.markAsTouched();
+        console.log('Form value after file upload:', this.vocabularyForm.value);
+        console.log('Form errors:', this.vocabularyForm.errors);
+        console.log('Image group errors:', this.vocabularyForm.get('image')?.errors);
         this.cdr.markForCheck();
         URL.revokeObjectURL(img.src);
+      };
+      img.onerror = () => {
+        alert('เกิดข้อผิดพลาดในการโหลดภาพ');
+        input.value = '';
+        this.cdr.markForCheck();
       };
     }
   }
@@ -875,17 +955,43 @@ export class FooterComponent {
 
   submitVocabulary() {
     this.vocabularyForm.markAllAsTouched();
+    console.log('Form value on submit:', this.vocabularyForm.value);
+    console.log('Form valid:', this.vocabularyForm.valid);
+    console.log('Form errors:', this.vocabularyForm.errors);
+    Object.keys(this.vocabularyForm.controls).forEach(key => {
+      const control = this.vocabularyForm.get(key);
+      console.log(`Field ${key} errors:`, control?.errors);
+      if (key === 'image') {
+        const imageGroup = control as FormGroup;
+        Object.keys(imageGroup.controls).forEach(subKey => {
+          console.log(`Field image.${subKey} errors:`, imageGroup.get(subKey)?.errors);
+        });
+      }
+    });
     if (this.vocabularyForm.invalid) {
       alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+      this.cdr.markForCheck();
       return;
     }
     if (!confirm('คุณต้องการเพิ่มคำศัพท์หรือไม่?')) {
       return;
     }
     this.spinnerService.show();
-    const vocabulary = this.vocabularyForm.value;
+    const formValue = this.vocabularyForm.value;
+    const payload = {
+      chWord: formValue.chWord,
+      pinYin: formValue.pinYin,
+      thWord: formValue.thWord,
+      category: formValue.category,
+      image: {
+        base64Data: formValue.image.base64Data,
+        contentType: formValue.image.contentType,
+        caption: formValue.imageCaption || ''
+      }
+    };
+    console.log('Payload to send:', payload);
     this.http
-      .post(`${environment.apiUrl}/words`, vocabulary, {
+      .post(`${environment.apiUrl}/words`, payload, {
         headers: this.user?.token ? { Authorization: `Bearer ${this.user.token}` } : {}
       })
       .subscribe({
@@ -913,9 +1019,20 @@ export class FooterComponent {
       return;
     }
     this.spinnerService.show();
-    const vocabulary = this.vocabularyForm.value;
+    const formValue = this.vocabularyForm.value;
+    const payload = {
+      chWord: formValue.chWord,
+      pinYin: formValue.pinYin,
+      thWord: formValue.thWord,
+      category: formValue.category,
+      image: {
+        base64Data: formValue.image.base64Data,
+        contentType: formValue.image.contentType,
+        caption: formValue.imageCaption || ''
+      }
+    };
     this.http
-      .put(`${environment.apiUrl}/words/${this.editingVocabularyId}`, vocabulary, {
+      .put(`${environment.apiUrl}/words/${this.editingVocabularyId}`, payload, {
         headers: this.user?.token ? { Authorization: `Bearer ${this.user.token}` } : {}
       })
       .subscribe({
@@ -984,12 +1101,18 @@ export class FooterComponent {
 
   editVocabulary(vocab: Vocabulary) {
     this.vocabularyForm.patchValue({
+      category: vocab.category,
       chWord: vocab.chWord,
       pinYin: vocab.pinYin,
       thWord: vocab.thWord,
-      image: vocab.image
+      image: {
+        base64Data: vocab.image.base64Data,
+        contentType: vocab.image.contentType,
+        caption: vocab.image.caption
+      },
+      imageCaption: vocab.image.caption
     });
-    this.vocabularyForm.get('image')?.markAsTouched();
+    this.vocabularyForm.get('image.base64Data')?.markAsTouched();
     this.editingVocabularyId = vocab._id;
     this.showEditVocabularyPopup = true;
     this.showManageVocabularyPopup = false;
@@ -1031,6 +1154,7 @@ export class FooterComponent {
       this.showAddVocabularyPopup = false;
       this.showManageVocabularyPopup = false;
       this.showEditVocabularyPopup = false;
+      this.isQuizHistoryLoaded = false;
     }
     this.cdr.markForCheck();
   }
@@ -1097,11 +1221,19 @@ export class FooterComponent {
 
   openAddVocabulary() {
     this.vocabularyForm.reset({
+      category: '',
       chWord: '',
       pinYin: '',
       thWord: '',
-      image: ''
+      image: {
+        base64Data: '',
+        contentType: '',
+        caption: ''
+      },
+      imageCaption: ''
     });
+    this.vocabularyForm.markAsPristine();
+    this.vocabularyForm.markAsUntouched();
     this.editingVocabularyId = null;
     this.showAddVocabularyPopup = true;
     this.showSettingsPopup = false;
@@ -1111,10 +1243,16 @@ export class FooterComponent {
   closeAddVocabularyPopup() {
     this.showAddVocabularyPopup = false;
     this.vocabularyForm.reset({
+      category: '',
       chWord: '',
       pinYin: '',
       thWord: '',
-      image: ''
+      image: {
+        base64Data: '',
+        contentType: '',
+        caption: ''
+      },
+      imageCaption: ''
     });
     this.cdr.markForCheck();
   }
@@ -1134,10 +1272,16 @@ export class FooterComponent {
   closeEditVocabularyPopup() {
     this.showEditVocabularyPopup = false;
     this.vocabularyForm.reset({
+      category: '',
       chWord: '',
       pinYin: '',
       thWord: '',
-      image: ''
+      image: {
+        base64Data: '',
+        contentType: '',
+        caption: ''
+      },
+      imageCaption: ''
     });
     this.editingVocabularyId = null;
     this.cdr.markForCheck();
