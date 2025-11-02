@@ -1,13 +1,16 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+import { CommonModule } from '@angular/common';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { environment } from '../../env';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { ErrorDialogComponent } from '../error-dialog.component';
 
 @Component({
   selector: 'app-register-form',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, CommonModule, MatDialogModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-8">
@@ -56,11 +59,18 @@ export class RegisterFormComponent {
   password: string = '';
   confirmPassword: string = '';
 
-  constructor(private router: Router, private http: HttpClient) {}
+  constructor(
+    private router: Router,
+    private http: HttpClient,
+    private dialog: MatDialog
+  ) {}
 
   onRegisterClick() {
     if (this.password !== this.confirmPassword) {
-      console.error('Passwords do not match');
+      this.dialog.open(ErrorDialogComponent, {
+        width: '350px',
+        data: { message: 'รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน' }
+      });
       return;
     }
 
@@ -71,14 +81,24 @@ export class RegisterFormComponent {
     };
 
     this.http.post(`${environment.apiUrl}/auth/register`, registerData).subscribe({
-      next: (response) => {
-        console.log('Registration successful:', response);
-        this.router.navigateByUrl('/login').then(success => {
-          console.log('Navigation success:', success);
-        });
+      next: () => {
+        this.router.navigateByUrl('/login');
       },
-      error: (error) => {
-        console.error('Registration error:', error);
+      error: (err: HttpErrorResponse) => {
+        let message = 'เกิดข้อผิดพลาดในการสมัครสมาชิก';
+
+        if (err.status === 400 && err.error?.message === 'Email already exists') {
+          message = 'อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่น';
+        } else if (err.status === 400) {
+          message = err.error?.message || message;
+        } else {
+          message = 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้';
+        }
+
+        this.dialog.open(ErrorDialogComponent, {
+          width: '350px',
+          data: { message }
+        });
       }
     });
   }
