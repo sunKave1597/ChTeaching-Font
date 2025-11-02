@@ -73,7 +73,6 @@ export class PuzzleContainer {
   modes = signal<GameMode[]>([
     { name: 'บัตรคำศัพท์', icon: 'lightbulb', description: 'ไอคอน หลอดไฟ บัตรคำศัพท์' },
     { name: 'ทายคำศัพท์', icon: 'magnifying-glass', description: 'ไอคอน แว่นขยาย ทายคำศัพท์' },
-    // { name: 'เกมส์ฝึกฟัง', icon: 'headphones', description: 'ไอคอน หูฟัง เกมส์ฝึกฟัง' },
   ]);
 
   selectedMode = signal<GameMode | null>(null);
@@ -82,10 +81,10 @@ export class PuzzleContainer {
 
   selectMode(mode: GameMode): void {
     this.selectedMode.set(mode);
-    if (mode.name === 'ทายคำศัพท์') {
+    if (mode.name === 'บัตรคำศัพท์') {
+      this.router.navigateByUrl('/flashcards');
+    } else if (mode.name === 'ทายคำศัพท์') {
       this.router.navigateByUrl('/puzzle/guess-word');
-    } else {
-      console.log(`เลือกโหมด: ${mode.name}`);
     }
   }
 }
