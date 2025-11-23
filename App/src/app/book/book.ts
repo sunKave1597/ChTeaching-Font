@@ -34,8 +34,11 @@ interface Category {
       .button-bg {
         background-color: #fdfafa;
       }
-      main {
+      .category-bg {
         background: linear-gradient(to right, #9d1616 30%, white 30%);
+      }
+      .word-bg {
+        background: white;
       }
       .back-button {
         position: fixed;
@@ -43,10 +46,31 @@ interface Category {
         left: 1.5rem;
         z-index: 50;
       }
+      .loading-spinner {
+        border: 6px solid #f3f3f3;
+        border-top: 6px solid #9d1616;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
     `,
   ],
   template: `
-    <main class="flex-grow p-4 sm:p-8 mx-auto w-full min-h-screen pb-32 flex flex-col">
+    <main
+      class="flex-grow p-4 sm:p-8 mx-auto w-full min-h-screen pb-32 flex flex-col"
+      [class.category-bg]="!selectedCategory()"
+      [class.word-bg]="selectedCategory()"
+    >
+      <!-- ปุ่มย้อนกลับ -->
       @if (selectedCategory()) {
       <button
         (click)="backToCategories()"
@@ -64,9 +88,15 @@ interface Category {
       </button>
       }
 
-      <div class="flex-1 flex items-center justify-center pt-">
+      <div class="flex-1 flex items-center justify-center">
         <div class="w-full max-w-2xl">
-          @if (!selectedCategory()) {
+          <!-- หน้าเลือกหมวดหมู่ -->
+          @if (!selectedCategory()) { @if (isLoading()) {
+          <div class="text-center py-20">
+            <div class="loading-spinner mx-auto"></div>
+            <p class="mt-6 text-xl text-gray-600">กำลังโหลดหมวดหมู่...</p>
+          </div>
+          } @else {
           <div class="flex flex-col gap-4 max-w-xl mx-auto">
             @for (category of categories(); track category.name) {
             <button
@@ -77,17 +107,25 @@ interface Category {
             </button>
             }
           </div>
-          } @if (selectedCategory()) {
+          } }
+
+          <!-- หน้าคำศัพท์ -->
+          @if (selectedCategory()) {
           <div class="text-center">
             <h2 class="text-3xl font-bold main-color mb-10 mt-20">
               {{ selectedCategory()!.name }}
             </h2>
 
+            <!-- Loading ขณะโหลดคำศัพท์ -->
             @if (isLoading()) {
-            <div class="flex justify-center py-20">
-              <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-[#9D1616]"></div>
+            <div class="text-center py-20">
+              <div class="loading-spinner mx-auto"></div>
+              <p class="mt-6 text-xl text-gray-600">กำลังโหลดคำศัพท์...</p>
             </div>
-            } @if (!isLoading() && words().length > 0 && currentWord()) {
+            }
+
+            <!-- แสดงคำศัพท์ -->
+            @else if (words().length > 0 && currentWord()) {
             <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-lg mx-auto">
               @if (currentWord()?.image?.base64Data) {
               <img
@@ -127,9 +165,11 @@ interface Category {
                     />
                   </svg>
                 </button>
+
                 <div class="text-2xl font-bold text-gray-700 min-w-32">
                   {{ currentIndex() + 1 }} / {{ words().length }}
                 </div>
+
                 <button
                   (click)="nextWord()"
                   [disabled]="currentIndex() >= words().length - 1"
@@ -146,7 +186,10 @@ interface Category {
                 </button>
               </div>
             </div>
-            } @if (!isLoading() && words().length === 0) {
+            }
+
+            <!-- ไม่พบคำศัพท์ -->
+            @else if (words().length === 0) {
             <p class="text-2xl text-gray-500 mt-20">ไม่พบคำศัพท์ในหมวดนี้</p>
             }
           </div>
@@ -177,7 +220,9 @@ export class BookContainer {
         this.categories.set(unique);
         this.isLoading.set(false);
       },
-      error: () => this.isLoading.set(false),
+      error: () => {
+        this.isLoading.set(false);
+      },
     });
   }
 
@@ -191,13 +236,13 @@ export class BookContainer {
     this.isLoading.set(true);
     this.words.set([]);
     this.currentWord.set(null);
+
     this.http.get<Word[]>(this.apiUrl).subscribe({
       next: (data) => {
         const filtered = data.filter((w) => w.category === categoryName);
         this.words.set(filtered);
         if (filtered.length > 0) {
           this.currentWord.set(filtered[0]);
-          this.currentIndex.set(0);
         }
         this.isLoading.set(false);
       },
@@ -210,18 +255,18 @@ export class BookContainer {
   }
 
   nextWord() {
-    const nextIdx = this.currentIndex() + 1;
-    if (nextIdx < this.words().length) {
-      this.currentIndex.set(nextIdx);
-      this.currentWord.set(this.words()[nextIdx]);
+    const next = this.currentIndex() + 1;
+    if (next < this.words().length) {
+      this.currentIndex.set(next);
+      this.currentWord.set(this.words()[next]);
     }
   }
 
   previousWord() {
-    const prevIdx = this.currentIndex() - 1;
-    if (prevIdx >= 0) {
-      this.currentIndex.set(prevIdx);
-      this.currentWord.set(this.words()[prevIdx]);
+    const prev = this.currentIndex() - 1;
+    if (prev >= 0) {
+      this.currentIndex.set(prev);
+      this.currentWord.set(this.words()[prev]);
     }
   }
 
