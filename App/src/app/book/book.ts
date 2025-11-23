@@ -1,7 +1,23 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../env';
 
-interface Topic {
+interface WordImage {
+  base64Data: string;
+  contentType: string;
+  caption: string;
+}
+
+interface Word {
+  chWord: string;
+  pinYin: string;
+  thWord: string;
+  category: string;
+  image?: WordImage | null;
+}
+
+interface Category {
   name: string;
 }
 
@@ -12,62 +28,207 @@ interface Topic {
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [
     `
-    .main-color {
-      color: #9D1616;
-    }
-    .button-bg {
-      background-color: #FDFAFA;
-    }
-    /* พื้นหลังสีตัดกันแนวตั้ง 30% ซ้าย (#9D1616) / 70% ขวา (white) */
-    main {
-      background: linear-gradient(to right, #9D1616 30%, white 30%);
-    }
-  `
+      .main-color {
+        color: #9d1616;
+      }
+      .button-bg {
+        background-color: #fdfafa;
+      }
+      main {
+        background: linear-gradient(to right, #9d1616 30%, white 30%);
+      }
+      .back-button {
+        position: fixed;
+        top: 1.5rem;
+        left: 1.5rem;
+        z-index: 50;
+      }
+    `,
   ],
   template: `
-    <main class="flex-grow p-4 sm:p-8 mx-auto w-full min-h-[calc(100vh-8rem)]">
-      <div class="h-full flex flex-col items-center justify-center">
-        
-        <!-- คอนเทนเนอร์สำหรับรายการหัวข้อ 7 ปุ่ม -->
-        <div class="flex flex-col gap-4 w-full max-w-xl mx-auto py-2">
-          
-          @for (topic of topics(); track topic.name) {
-            <!-- ปรับขนาด (py-4 sm:py-6), เพิ่มขอบและเงา (border shadow-md), และเพิ่มขนาดตัวอักษร (text-xl) -->
-            <button 
-              (click)="selectTopic(topic)"
-              class="w-full text-center text-xl py-4 sm:py-6 rounded-xl font-bold
-                     button-bg main-color border border-gray-100 shadow-md 
-                     transition-all duration-300 hover:bg-[#F0F0F0] hover:shadow-lg 
-                     focus:outline-none focus:ring-4 focus:ring-[#9D1616] focus:ring-opacity-50">
-              {{ topic.name }}
+    <main class="flex-grow p-4 sm:p-8 mx-auto w-full min-h-screen pb-32 flex flex-col">
+      @if (selectedCategory()) {
+      <button
+        (click)="backToCategories()"
+        class="back-button inline-flex items-center gap-2 text-[#9D1616] hover:text-[#7B1111] font-semibold bg-white px-4 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M15 19l-7-7 7-7"
+          />
+        </svg>
+        กลับไปเลือกหมวด
+      </button>
+      }
+
+      <div class="flex-1 flex items-center justify-center pt-">
+        <div class="w-full max-w-2xl">
+          @if (!selectedCategory()) {
+          <div class="flex flex-col gap-4 max-w-xl mx-auto">
+            @for (category of categories(); track category.name) {
+            <button
+              (click)="selectCategory(category)"
+              class="text-center text-xl py-6 rounded-xl font-bold button-bg main-color border border-gray-100 shadow-md hover:bg-[#F0F0F0] hover:shadow-lg transition-all"
+            >
+              {{ category.name }}
             </button>
+            }
+          </div>
+          } @if (selectedCategory()) {
+          <div class="text-center">
+            <h2 class="text-3xl font-bold main-color mb-10 mt-20">
+              {{ selectedCategory()!.name }}
+            </h2>
+
+            @if (isLoading()) {
+            <div class="flex justify-center py-20">
+              <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-[#9D1616]"></div>
+            </div>
+            } @if (!isLoading() && words().length > 0 && currentWord()) {
+            <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-lg mx-auto">
+              @if (currentWord()?.image?.base64Data) {
+              <img
+                [src]="
+                  'data:' +
+                  currentWord()!.image!.contentType +
+                  ';base64,' +
+                  currentWord()!.image!.base64Data
+                "
+                [alt]="currentWord()!.thWord"
+                class="mx-auto w-80 h-80 object-cover rounded-2xl shadow-xl mb-8"
+              />
+              } @else {
+              <div
+                class="mx-auto w-80 h-80 bg-gray-200 rounded-2xl flex items-center justify-center mb-8"
+              >
+                <span class="text-gray-500 text-xl">ไม่มีรูปภาพ</span>
+              </div>
+              }
+
+              <h1 class="text-6xl font-bold main-color mb-4">{{ currentWord()!.chWord }}</h1>
+              <p class="text-4xl text-gray-700 mb-6">{{ currentWord()!.pinYin }}</p>
+              <p class="text-5xl font-bold text-gray-900">{{ currentWord()!.thWord }}</p>
+
+              <div class="mt-12 flex justify-center gap-10 items-center">
+                <button
+                  (click)="previousWord()"
+                  [disabled]="currentIndex() === 0"
+                  class="p-5 rounded-full bg-white shadow-xl disabled:opacity-30 disabled:cursor-not-allowed hover:shadow-2xl transition-all"
+                >
+                  <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </button>
+                <div class="text-2xl font-bold text-gray-700 min-w-32">
+                  {{ currentIndex() + 1 }} / {{ words().length }}
+                </div>
+                <button
+                  (click)="nextWord()"
+                  [disabled]="currentIndex() >= words().length - 1"
+                  class="p-5 rounded-full bg-white shadow-xl disabled:opacity-30 disabled:cursor-not-allowed hover:shadow-2xl transition-all"
+                >
+                  <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            } @if (!isLoading() && words().length === 0) {
+            <p class="text-2xl text-gray-500 mt-20">ไม่พบคำศัพท์ในหมวดนี้</p>
+            }
+          </div>
           }
         </div>
-
-        @if (selectedTopic()) {
-          <div class="mt-8 text-center text-xl text-gray-700 p-4 border-t border-gray-200">
-            คุณเลือกหัวข้อ: <span class="font-bold main-color">{{ selectedTopic()?.name }}</span>
-          </div>
-        }
       </div>
     </main>
-  `
+  `,
 })
 export class BookContainer {
-  topics = signal<Topic[]>([
-    { name: 'ตัวเลข ลำดับ' },
-    { name: 'เกี่ยวกับฉัน' },
-    { name: 'สวัสดีทักทาย' },
-    { name: 'อาหาร' },
-    { name: 'ท้องถนน' },
-    { name: 'ฤดูกาล' },
-    { name: 'ครอบครัว' },
-  ]);
+  categories = signal<Category[]>([]);
+  selectedCategory = signal<Category | null>(null);
+  words = signal<Word[]>([]);
+  currentIndex = signal(0);
+  currentWord = signal<Word | null>(null);
+  isLoading = signal(false);
+  private apiUrl = `${environment.apiUrl}/words`;
 
-  selectedTopic = signal<Topic | null>(null);
+  constructor(private http: HttpClient) {
+    this.loadCategories();
+  }
 
-  selectTopic(topic: Topic): void {
-    this.selectedTopic.set(topic);
-    console.log(`เลือกหัวข้อ: ${topic.name}`);
+  loadCategories() {
+    this.isLoading.set(true);
+    this.http.get<Word[]>(this.apiUrl).subscribe({
+      next: (data) => {
+        const unique = Array.from(new Set(data.map((w) => w.category))).map((name) => ({ name }));
+        this.categories.set(unique);
+        this.isLoading.set(false);
+      },
+      error: () => this.isLoading.set(false),
+    });
+  }
+
+  selectCategory(category: Category) {
+    this.selectedCategory.set(category);
+    this.currentIndex.set(0);
+    this.loadWordsByCategory(category.name);
+  }
+
+  loadWordsByCategory(categoryName: string) {
+    this.isLoading.set(true);
+    this.words.set([]);
+    this.currentWord.set(null);
+    this.http.get<Word[]>(this.apiUrl).subscribe({
+      next: (data) => {
+        const filtered = data.filter((w) => w.category === categoryName);
+        this.words.set(filtered);
+        if (filtered.length > 0) {
+          this.currentWord.set(filtered[0]);
+          this.currentIndex.set(0);
+        }
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.words.set([]);
+        this.currentWord.set(null);
+        this.isLoading.set(false);
+      },
+    });
+  }
+
+  nextWord() {
+    const nextIdx = this.currentIndex() + 1;
+    if (nextIdx < this.words().length) {
+      this.currentIndex.set(nextIdx);
+      this.currentWord.set(this.words()[nextIdx]);
+    }
+  }
+
+  previousWord() {
+    const prevIdx = this.currentIndex() - 1;
+    if (prevIdx >= 0) {
+      this.currentIndex.set(prevIdx);
+      this.currentWord.set(this.words()[prevIdx]);
+    }
+  }
+
+  backToCategories() {
+    this.selectedCategory.set(null);
+    this.words.set([]);
+    this.currentWord.set(null);
+    this.currentIndex.set(0);
   }
 }
