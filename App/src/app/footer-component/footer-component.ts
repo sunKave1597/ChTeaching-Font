@@ -385,7 +385,7 @@ interface Vocabulary {
                         <td class="px-4 py-2 text-gray-700">{{ vocab.pinYin }}</td>
                         <td class="px-4 py-2 text-gray-700">{{ vocab.thWord }}</td>
                         <td class="px-4 py-2 text-gray-700 flex items-center gap-2">
-                          <button (click)="editVocabulary(vocab)" class="px-3 py-1 bg-[#9D1616] text-white text-sm rounded hover:bg-[#7B1111]">แก้ไข</button>
+                          
                           <button (click)="confirmDeleteVocabulary(vocab)" class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">ลบ</button>
                         </td>
                       </tr>
